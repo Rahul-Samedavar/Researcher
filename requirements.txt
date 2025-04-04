@@ -13,3 +13,5 @@ flask-cors
 pdfkit
 langchain-chroma
 reportlab
+langchain-google-genai
+google-generativeai

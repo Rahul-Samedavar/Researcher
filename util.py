@@ -1,19 +1,20 @@
 from langchain_community.document_loaders import PyMuPDFLoader, TextLoader, Docx2txtLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
 from langchain.schema import Document
 from langchain_chroma import Chroma
-from langchain_community.chat_models import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+
 import os
 import tempfile
 import shutil
 import atexit
 import keys
 
+# Set the API key
+
 TEMP_BASE_FOLDER = tempfile.mkdtemp()
-
-
 
 def cleanup():
     shutil.rmtree(TEMP_BASE_FOLDER)
@@ -53,7 +54,7 @@ def save_to_chroma(chunks: list[Document], db_name):
 
     db = Chroma.from_documents(
         chunks,
-        OpenAIEmbeddings(),
+        GoogleGenerativeAIEmbeddings(),
         persist_directory=CHROMA_PATH
     )
     return db
@@ -67,7 +68,7 @@ def ingest(file_path, db_name):
 
 def search(query, db_path):
     db_dir = os.path.join(TEMP_BASE_FOLDER, db_path)
-    embedding_function = OpenAIEmbeddings()
+    embedding_function = GoogleGenerativeAIEmbeddings()
     
     if not os.path.exists(db_dir):
         print("lol:", db_dir)
@@ -105,12 +106,11 @@ def query_rag(query_text, db_name):
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     prompt = prompt_template.format(context=context_text, question=query_text)
 
-    model = ChatOpenAI()
-    response_text = model.predict(prompt)
+    model = ChatGoogleGenerativeAI(model="gemini-pro")
+    response_text = model.invoke(prompt)
 
     return response_text, sources_with_pages
 
-from langchain_core.prompts import PromptTemplate
 
 CONT_AWARE_QUERY_TEMPLATE = """
 You are an RAG prompt generator. 
@@ -145,7 +145,7 @@ def context_aware_query(history, query):
     prompt_template = PromptTemplate.from_template(CONT_AWARE_QUERY_TEMPLATE)
     prompt = prompt_template.format(history=history, query=query)
 
-    model = ChatOpenAI()
-    cont_awar_query = model.predict(prompt)
+    model = ChatGoogleGenerativeAI(model="gemini-pro")
+    cont_aware_query = model.invoke(prompt)
 
-    return cont_awar_query
+    return cont_aware_query
