@@ -1,20 +1,19 @@
 from langchain_community.document_loaders import PyMuPDFLoader, TextLoader, Docx2txtLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
 from langchain.schema import Document
 from langchain_chroma import Chroma
-from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
-
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-
+from langchain_community.chat_models import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
 import os
 import tempfile
 import shutil
 import atexit
 import keys
 
-# Set the API key
-
 TEMP_BASE_FOLDER = tempfile.mkdtemp()
+
+
 
 def cleanup():
     shutil.rmtree(TEMP_BASE_FOLDER)
@@ -54,7 +53,7 @@ def save_to_chroma(chunks: list[Document], db_name):
 
     db = Chroma.from_documents(
         chunks,
-        GoogleGenerativeAIEmbeddings(),
+        OpenAIEmbeddings(),
         persist_directory=CHROMA_PATH
     )
     return db
@@ -68,7 +67,7 @@ def ingest(file_path, db_name):
 
 def search(query, db_path):
     db_dir = os.path.join(TEMP_BASE_FOLDER, db_path)
-    embedding_function = GoogleGenerativeAIEmbeddings()
+    embedding_function = OpenAIEmbeddings()
     
     if not os.path.exists(db_dir):
         print("lol:", db_dir)
@@ -106,11 +105,12 @@ def query_rag(query_text, db_name):
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
     prompt = prompt_template.format(context=context_text, question=query_text)
 
-    model = ChatGoogleGenerativeAI(model="gemini-pro")
-    response_text = model.invoke(prompt)
+    model = ChatOpenAI()
+    response_text = model.predict(prompt)
 
     return response_text, sources_with_pages
 
+from langchain_core.prompts import PromptTemplate
 
 CONT_AWARE_QUERY_TEMPLATE = """
 You are an RAG prompt generator. 
@@ -145,7 +145,53 @@ def context_aware_query(history, query):
     prompt_template = PromptTemplate.from_template(CONT_AWARE_QUERY_TEMPLATE)
     prompt = prompt_template.format(history=history, query=query)
 
-    model = ChatGoogleGenerativeAI(model="gemini-pro")
-    cont_aware_query = model.invoke(prompt)
+    model = ChatOpenAI()
+    cont_awar_query = model.predict(prompt)
 
-    return cont_aware_query
+    return cont_awar_query
+
+def summarize_pdf(file_path):
+    documents = load_document(file_path)
+    chunks = split_text(documents)
+
+    model = ChatOpenAI()
+
+    # Prompt for summarizing individual chunks
+    summary_prompt = ChatPromptTemplate.from_template(
+        """Summarize the following:\n\n{context}"""
+    )
+
+    chunk_summaries = []
+    for chunk in chunks:
+        prompt = summary_prompt.format(context=chunk.page_content)
+        summary = model.predict(prompt)
+        chunk_summaries.append(summary)
+
+    # Combine all chunk summaries
+    combined_summary_text = "\n".join(chunk_summaries)
+
+    # Final summary of all summaries
+    final_prompt = ChatPromptTemplate.from_template(
+        """You are an Summerizing agent. Your Task is to summarize the given content into well organized and detailes summary. Use multiple paragraphs to keep it clean.
+        Content:\n\n{context}"""
+    )
+    final_summary = model.predict(final_prompt.format(context=combined_summary_text))
+
+    return final_summary
+
+def summarize_pdf(file_path):
+    documents = load_document(file_path)
+    full_text = "\n".join([doc.page_content for doc in documents])
+
+    model = ChatOpenAI()
+
+    # Prompt for summarizing the entire content
+    final_prompt = ChatPromptTemplate.from_template(
+        "Read the following document and write a comprehensive, multi-paragraph summary. "
+        "Ensure each paragraph focuses on different key themes, topics, or insights:\n\n{context}"
+    )
+
+    final_summary = model.predict(final_prompt.format(context=full_text))
+
+    return final_summary
+
