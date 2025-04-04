@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Researcher</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename= 'assets/logo.png') }}">
+</head>
+<body>
+    <nav>
+        <img src="{{ url_for('static', filename='../static/assets/logo.png') }}" alt="">
+        <div class="but">
+            <button id="exportButton" class="btn">Export</button>
+            <button id="clearButton" class="btn", onclick="clearData()">Clear</button>
+        </div>
+    </nav>
+
+<div class="container">
+
+    <div class="left-section">
+
+        <div class="chat-container" id="chatContainer">
+            <div class="chat-message bot-message">
+                <p>Welcome! Upload a document and ask your queries.</p>
+            </div>
+
+        </div>
+
+        <form id="queryForm" class="chat-form">
+            <label for="fileInput" class="upload-btn" title="Upload Document">📎</label>
+            <input type="file" id="fileInput" style="display: none;">
+            <input type="text" id="queryInput" placeholder="Ask a question..." required>
+            <button type="submit">➤</button>
+        </form>
+
+    </div>
+
+    
+    <div class="right-section">
+        <h2>File Preview</h2>
+        <iframe id="filePreview" src="/preview/0" frameborder="0"></iframe>
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
